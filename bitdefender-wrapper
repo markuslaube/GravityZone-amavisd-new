@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+#  Dieses Tool erlaubt die Integartion von "Bitdefender GravityZone Business Security" in eine (bestehende) amavis Installation
+#
+#
+# Autor Markus Laube, markus@laube.email
+# Version: 2022-04-13 23:45
+# Licence: GNU GENERAL PUBLIC LICENSE 3 - https://github.com/markuslaube/GravityZone-amavisd-new/blob/main/LICENSE
+#
+AMAVISOPT="$@"
+GravityZone_BDU="/opt/bitdefender-security-tools/bin/bduitool"
+DEBUG=0
+if [ $DEBUG == 0 ] ; then debugtool="true" ; else debugtool="echo" ; fi
+
+
+##
+# Start GravityZone Scan, and first read state directly - for fast scans
+##
+
+TaskUID="$( ${GravityZone_BDU} scan -s custom ${AMAVISOPT} | awk '{print$NF}' )"
+ISTSTATE="$( ${GravityZone_BDU} get scanstatus ${TaskUID} | head -n1 | awk -F, '{print$1}' )"
+SOLLSTATE="Task status is finished"
+
+
+##
+# Check, thats the GravityZone scan is finished and is not finished wait for finishing
+##
+
+while [ "${ISTSTATE}" != "${SOLLSTATE}" ] ; do 
+	sleep 1
+	ISTSTATE="$( ${GravityZone_BDU} get scanstatus ${TaskUID} | head -n1 | awk -F, '{print$1}' )"
+done
+
+
+##
+# read GravityZone LogData
+##
+
+LOG="$( ${GravityZone_BDU} get scanlog ${TaskUID})"
+
+
+##
+# This is an example output of GravityZone scanlog (bduitool get scanlog $TaskUID)
+##
+
+# Scan started with Bitdefender Endpoint Security Tools V7 engines 7.91646
+# TaskUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# Last scan was on: yyyy-mm-dd at hh:mm:ss GMT+2
+# Scan type: custom scan
+# Scanned paths:
+#         /tmp/
+# Total scanned items: 7
+# Resolved items: 2
+# Unresolved items: 0
+# Full Report Available: /opt/bitdefender-security-tools/var/log/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/xxxxxxxxxx_xxxxxxxxxxxxx_x_x.xml
+
+
+##
+# Build output and informations about Infected Files found by GravityZone
+##
+
+TOTAL="$(echo "${LOG}" | grep ^'Total scanned items:' | awk -F: '{print$NF}' | sed 's/\s//g')"
+RESOLVED="$(echo "$LOG" | grep ^'Resolved items:' | awk -F: '{print$NF}' | sed 's/\s//g')"
+UNRESOLVED="$(echo "$LOG" | grep ^'Unresolved items:' | awk -F: '{print$NF}' | sed 's/\s//g')"
+let INFECTED=RESOLVED+UNRESOLVED
+if [ ${INFECTED} -gt 0 ] ; then 
+	LOGFILE="$( echo "${LOG}" | grep ^'Full Report Available:' | awk '{print$NF}')"
+	LOGLENG="$( wc -l ${LOGFILE} | awk '{print$1}' )"
+	VIRUSNAME="$( grep -A ${LOGLENG} '<ScanDetails>' ${LOGFILE} | grep -B ${LOGLENG} '</ScanDetails>' | sed 's/threatName/\nthreatName/g' | grep threatName | sed 's/" /"\n/g' | grep 'threatName' | awk -F\= '{print$2}' | uniq -c| awk -F\" '{print"Signature "$2" found"}' )"
+fi
+
+
+##
+# Send Information about infected Files to stdout for amavisd
+##
+
+${debugtool} "TaskUID: ${TaskUID}"
+${debugtool} "${ISTSTATE}"
+${debugtool} "Total scanned items: ${TOTAL}"
+${debugtool} "Resolved items: ${RESOLVED}"
+${debugtool} "Unresolved items: ${UNRESOLVED}"
+echo "Infected items: ${INFECTED}"
+[[ ! -z "${VIRUSNAME}" ]] && echo "${VIRUSNAME}" 
+exit ${INFECTED}
