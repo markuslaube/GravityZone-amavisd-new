@@ -1,5 +1,5 @@
 # GravityZone-amavisd-new
-Dieses Tool erlaubt die Integartion von "Bitdefender GravityZone Business Security" in eine (bestehende) amavisd-new Installation
+Dieses Tool erlaubt die Integration von "Bitdefender GravityZone Business Security" in eine (bestehende) amavisd-new Installation
 
 Vorbemerkunen:
 ==============
