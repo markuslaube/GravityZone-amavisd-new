@@ -68,4 +68,4 @@ Installation:
 - ersetze in /etc/amavisd/amavisd.conf block "@av_scanners = ( [...] )" durch content von bitdefender-amavisd.conf
 - restart amavisd
 
-PS: Meine Scripte sind manchmal etwas umständlich, ich weiß und gerade bei if;then;else bin ich nicht immer ganz konsistent, wers anpassen mag / anders besser findet. No Porblem, bitte einfach entsprechend der Lizenz anpassen.
+PS: Meine Scripte sind manchmal etwas umständlich, ich weiß und gerade bei if;then;else bin ich nicht immer ganz konsistent, wers anpassen mag / anders besser findet. No Problem, bitte einfach entsprechend der Lizenz anpassen.
